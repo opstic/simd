@@ -115,13 +115,13 @@ impl Kind {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Config {
-    kind: Kind,
-    extra: Extra,
+pub struct Config {
+    pub kind: Kind,
+    pub extra: Extra,
 }
 
 #[derive(Debug, Clone, Copy)]
-enum Extra {
+pub enum Extra {
     Pad,
     NoPad,
     Forgiving,
