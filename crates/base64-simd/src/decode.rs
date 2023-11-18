@@ -13,7 +13,7 @@ use vsimd::SIMD256;
 
 use core::ops::Not;
 
-const fn decode_table(charset: &'static [u8; 64]) -> [u8; 256] {
+pub(crate) const fn decode_table(charset: &'static [u8; 64]) -> [u8; 256] {
     let mut table = [0xff; 256];
     let mut i = 0;
     while i < charset.len() {
@@ -184,6 +184,7 @@ pub(crate) unsafe fn decode_fallback(
     let table = match kind {
         Kind::Standard => STANDARD_DECODE_TABLE.as_ptr(),
         Kind::UrlSafe => URL_SAFE_DECODE_TABLE.as_ptr(),
+        Kind::Custom(_, decode_table, ..) => decode_table.as_ptr(),
     };
 
     // n*3/4 >= 6+2
@@ -218,6 +219,7 @@ pub(crate) unsafe fn decode_simd<S: SIMD256>(
     let (check_lut, decode_lut) = match kind {
         Kind::Standard => (STANDARD_ALSW_CHECK_X2, STANDARD_ALSW_DECODE_X2),
         Kind::UrlSafe => (URL_SAFE_ALSW_CHECK_X2, URL_SAFE_ALSW_DECODE_X2),
+        Kind::Custom(_, _, _, alsw_check, alsw_decode) => (alsw_check.x2(), alsw_decode.x2()),
     };
 
     // n*3/4 >= 24+4

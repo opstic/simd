@@ -73,13 +73,15 @@ pub use outref::{AsOut, Out};
 
 // -----------------------------------------------------------------------------
 
-use crate::decode::decoded_length;
-use crate::encode::encoded_length_unchecked;
+use crate::decode::{decode_table, decoded_length};
+use crate::encode::{encoded_length_unchecked, encoding_shift};
 
 use vsimd::tools::{slice_mut, slice_parts};
 
 #[cfg(feature = "alloc")]
 use alloc::{string::String, vec::Vec};
+use vsimd::alsw::AlswLut;
+use vsimd::vector::V128;
 
 const STANDARD_CHARSET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const URL_SAFE_CHARSET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
@@ -90,10 +92,26 @@ pub struct Base64 {
     config: Config,
 }
 
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
-enum Kind {
+pub enum Kind {
     Standard,
     UrlSafe,
+    // Charset, decode table, encode shift, alsw check, alsw decode,
+    Custom(&'static [u8; 64], [u8; 256], V128, AlswLut<V128>, AlswLut<V128>)
+}
+
+impl Kind {
+    #[allow(missing_docs)]
+    pub fn custom(charset: &'static [u8; 64], alsw_check: AlswLut<V128>, alsw_decode: AlswLut<V128>) -> Kind {
+        Kind::Custom(
+            charset,
+            decode_table(charset),
+            encoding_shift(charset),
+            alsw_check,
+            alsw_decode,
+        )
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -179,6 +197,7 @@ impl Base64 {
         match self.config.kind {
             Kind::Standard => STANDARD_CHARSET,
             Kind::UrlSafe => URL_SAFE_CHARSET,
+            Kind::Custom(charset, ..) => charset,
         }
     }
 

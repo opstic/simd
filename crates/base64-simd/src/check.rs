@@ -17,6 +17,7 @@ pub(crate) unsafe fn check_fallback(mut src: *const u8, mut n: usize, config: Co
     let table = match kind {
         Kind::Standard => STANDARD_DECODE_TABLE.as_ptr(),
         Kind::UrlSafe => URL_SAFE_DECODE_TABLE.as_ptr(),
+        Kind::Custom(_, decode_table, ..) => decode_table.as_ptr(),
     };
 
     unsafe {
@@ -49,6 +50,7 @@ pub(crate) unsafe fn check_simd<S: SIMD256>(
     let check_lut = match kind {
         Kind::Standard => STANDARD_ALSW_CHECK_X2,
         Kind::UrlSafe => URL_SAFE_ALSW_CHECK_X2,
+        Kind::Custom(_, _, _, alsw_check, ..) => alsw_check.x2(),
     };
 
     unsafe {

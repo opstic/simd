@@ -83,6 +83,7 @@ pub(crate) unsafe fn encode_fallback(mut src: *const u8, mut len: usize, mut dst
     let charset = match kind {
         Kind::Standard => STANDARD_CHARSET.as_ptr(),
         Kind::UrlSafe => URL_SAFE_CHARSET.as_ptr(),
+        Kind::Custom(charset, ..) => charset.as_ptr(),
     };
 
     const L: usize = 4;
@@ -129,6 +130,7 @@ pub(crate) unsafe fn encode_simd<S: SIMD256>(
         let (charset, shift_lut) = match kind {
             Kind::Standard => (STANDARD_CHARSET.as_ptr(), STANDARD_ENCODING_SHIFT_X2),
             Kind::UrlSafe => (URL_SAFE_CHARSET.as_ptr(), URL_SAFE_ENCODING_SHIFT_X2),
+            Kind::Custom(charset, _, encode_shift, ..) => (charset.as_ptr(), encode_shift.x2()),
         };
 
         for _ in 0..2 {
@@ -152,6 +154,7 @@ pub(crate) unsafe fn encode_simd<S: SIMD256>(
         let shift_lut = match kind {
             Kind::Standard => STANDARD_ENCODING_SHIFT,
             Kind::UrlSafe => URL_SAFE_ENCODING_SHIFT,
+            Kind::Custom(_, _, encode_shift, ..) => encode_shift,
         };
 
         let x = s.v128_load_unaligned(src);
@@ -268,7 +271,7 @@ fn split_bits_x1<S: SIMD128>(s: S, x: V128) -> V128 {
 }
 
 #[inline]
-const fn encoding_shift(charset: &'static [u8; 64]) -> V128 {
+pub(crate) const fn encoding_shift(charset: &'static [u8; 64]) -> V128 {
     // 0~25     'A'   [13]
     // 26~51    'a'   [0]
     // 52~61    '0'   [1~10]
